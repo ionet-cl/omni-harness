@@ -1,0 +1,41 @@
+api_key = "PLACEHOLDER_DEEPSEEK_API_KEY"
+base_url = "https://opencode.ai/zen/go/v1"
+default_text_model = "deepseek-v4-flash"
+provider = "openai"
+approval_policy = "auto"
+sandbox_mode = "workspace-write"
+allow_shell = true
+cost_currency = "usd"
+features = { apply_patch = true, mcp = true, shell_tool = true, subagents = true, web_search = true }
+max_subagents = 16
+mcp_config_path = "~/.deepseek/mcp.json"
+memory_path = "~/.deepseek/memory.md"
+notes_path = "~/.deepseek/notes.txt"
+reasoning_effort = "auto"
+skills_dir = "~/.deepseek/skills"
+
+[providers.deepseek]
+api_key = "PLACEHOLDER_DEEPSEEK_API_KEY"
+base_url = "https://api.deepseek.com"
+model = "deepseek-v4-flash"
+
+[providers.openai]
+api_key = "PLACEHOLDER_OPENCODE_API_KEY"
+base_url = "https://opencode.ai/zen/go/v1"
+model = "deepseek-v4-flash"
+
+[projects."/home/leonardo"]
+trust_level = "trusted"
+
+[projects."/home/leonardo/.deepseek"]
+trust_level = "trusted"
+
+[retry]
+enabled = true
+exponential_base = 2.0
+initial_delay = 1.0
+max_delay = 60.0
+max_retries = 3
+
+[tui]
+theme = "default"

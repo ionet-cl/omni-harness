@@ -1,0 +1,28 @@
+{
+  "version": 3,
+  "entries": {},
+  "log": [
+    {
+      "trace_id": "test-ol-001",
+      "key": "test/optimistic",
+      "action": "write",
+      "version": 1,
+      "timestamp": "2026-05-15T16:06:48.649Z"
+    },
+    {
+      "trace_id": "test-ol-002",
+      "key": "test/optimistic",
+      "action": "write",
+      "version": 2,
+      "timestamp": "2026-05-15T16:06:48.812Z"
+    },
+    {
+      "trace_id": "ede6c853-a32d-4037-bd58-96ebccfb2eb4",
+      "key": "test/optimistic",
+      "action": "delete",
+      "version": 3,
+      "timestamp": "2026-05-15T16:06:56.290Z"
+    }
+  ],
+  "last_updated": "2026-05-15T16:06:56.290Z"
+}

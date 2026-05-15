@@ -1,0 +1,14 @@
+[Unit]
+Description=DeepSeek V4 OpenCode Claude Code Bridge
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/leonardo/dev/repos/deepseek-v4-opencode-claude-code-bridge
+ExecStart=/home/leonardo/.nvm/versions/node/v24.14.1/bin/node /home/leonardo/dev/repos/deepseek-v4-opencode-claude-code-bridge/index.js --config /home/leonardo/dev/repos/deepseek-v4-opencode-claude-code-bridge/config.json
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target

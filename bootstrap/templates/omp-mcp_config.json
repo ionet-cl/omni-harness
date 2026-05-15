@@ -1,0 +1,65 @@
+{
+    "$schema": "https://raw.githubusercontent.com/can1357/oh-my-pi/main/packages/coding-agent/src/config/mcp-schema.json",
+    "mcpServers": {
+        "serena": {
+            "type": "stdio",
+            "command": "uvx",
+            "args": [
+                "--from",
+                "git+https://github.com/oraios/serena",
+                "serena",
+                "start-mcp-server"
+            ],
+            "env": {}
+        },
+        "tavily": {
+            "type": "stdio",
+            "command": "npx",
+            "args": [
+                "-y",
+                "tavily-mcp"
+            ],
+            "env": {
+                "TAVILY_API_KEY": "PLACEHOLDER_TAVILY_API_KEY"
+            }
+        },
+        "context7": {
+            "type": "stdio",
+            "command": "npx",
+            "args": [
+                "-y",
+                "@upstash/context7-mcp"
+            ],
+            "env": {
+                "CONTEXT7_API_KEY": "PLACEHOLDER_CONTEXT7_API_KEY"
+            }
+        },
+        "filesystem": {
+            "type": "stdio",
+            "command": "npx",
+            "args": [
+                "-y",
+                "@modelcontextprotocol/server-filesystem",
+                "/home/leonardo"
+            ],
+            "env": {}
+        },
+        "blink": {
+            "type": "stdio",
+            "command": "uv",
+            "args": [
+                "run",
+                "--directory",
+                "/home/leonardo/dev/proyectos/blink-mcp",
+                "blink-mcp"
+            ],
+            "env": {}
+        },
+        "harness-blackboard": {
+            "type": "stdio",
+            "command": "node",
+            "args": ["/home/leonardo/harness-blackboard/server.js"],
+            "env": {}
+        }
+    }
+}
