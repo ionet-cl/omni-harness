@@ -4,6 +4,40 @@ const fs = require("fs");
 const os = require("os");
 const path = require("path");
 
+// ── Modular Loading (Harness Engineering) ─────────────────────────
+// Si los módulos existen (refactor local), se usan.
+// Si no (upstream stock), server.js funciona con su lógica inline.
+let useModules = false;
+try {
+  const cfgModule = require("./config/index.js");
+  const cacheModule = require("./cache/reasoning-cache.js");
+
+  // Override CONFIG y funciones de cache con versiones modulares
+  CONFIG = cfgModule.loadConfig();
+  cacheModule.setConfig(CONFIG);
+  cacheModule.loadReasoningCache();
+
+  // Reemplazar funciones inline por las modulares
+  loadReasoningCache = function () {};
+  saveReasoningCacheNow = cacheModule.saveReasoningCacheNow;
+  flushReasoningCache = cacheModule.flushReasoningCache;
+  scheduleSaveReasoningCache = cacheModule.scheduleSaveReasoningCache;
+  setToolReasoning = cacheModule.setToolReasoning;
+  getToolReasoning = cacheModule.getToolReasoning;
+  getAssistantReasoning = cacheModule.getAssistantReasoning;
+  setAssistantReasoning = cacheModule.setAssistantReasoning;
+  getToolContextReasoning = cacheModule.getToolContextReasoning;
+  setToolContextReasoning = cacheModule.setToolContextReasoning;
+  currentToolContextParts = cacheModule.currentToolContextParts;
+  reasoningCachePayload = cacheModule.reasoningCachePayload;
+
+  useModules = true;
+  console.error(`[Bridge] Modular mode: config y cache desde módulos.`);
+} catch (_) {
+  // Fallback: usar funciones inline (compatible con upstream)
+  console.error(`[Bridge] Legacy mode: usando lógica inline.`);
+}
+
 const DEFAULT_BASE_URL = "https://opencode.ai/zen/go/v1";
 const DEFAULT_MODELS = ["deepseek-v4-pro[1m]", "deepseek-v4-flash"];
 const DEFAULT_REASONING_CACHE_PATH = path.join(
@@ -171,7 +205,9 @@ function normalizeBaseUrl(url) {
   return base.endsWith("/v1") ? base : `${base}/v1`;
 }
 
-const CONFIG = loadConfig();
+if (typeof CONFIG === 'undefined') {
+  var CONFIG = loadConfig(); // var para no redeclarar si ya existe (modo modular)
+}
 const reasoningByToolCallId = new Map();
 const reasoningByAssistantText = new Map();
 const reasoningByToolContext = new Map();
@@ -847,16 +883,22 @@ function reasoningEffortToOpenAi(outputConfig) {
   return undefined;
 }
 
+function sanitizeModelName(model) {
+  // Strip Claude Code suffixes like [1m] that are not valid upstream model names
+  return typeof model === "string" ? model.replace(/\[.*?\]/g, "").trim() || model : model;
+}
+
 function anthropicToOpenAi(body, stream) {
   const messages = [];
-  const sendDeepSeekExtensions = isDeepSeekModel(body.model);
-  const extraSystem = toolChoiceInstruction(body.tool_choice, body.model);
+  const cleanModel = sanitizeModelName(body.model);
+  const sendDeepSeekExtensions = isDeepSeekModel(cleanModel);
+  const extraSystem = toolChoiceInstruction(body.tool_choice, cleanModel);
   const system = [systemToOpenAi(body.system), extraSystem].filter(Boolean).join("\n\n");
   if (system) messages.push({ role: "system", content: system });
-  messages.push(...anthropicMessagesToOpenAi(body.messages, shouldSendReasoningContent(body.model)));
+  messages.push(...anthropicMessagesToOpenAi(body.messages, shouldSendReasoningContent(cleanModel)));
 
   const payload = {
-    model: body.model,
+    model: cleanModel,
     messages,
     stream,
     max_tokens: body.max_tokens,
@@ -864,12 +906,11 @@ function anthropicToOpenAi(body, stream) {
     top_p: body.top_p,
     stop: body.stop_sequences,
     tools: anthropicToolsToOpenAi(body.tools),
-    tool_choice: anthropicToolChoiceToOpenAi(body.tool_choice, body.model),
+    tool_choice: anthropicToolChoiceToOpenAi(body.tool_choice, cleanModel),
     thinking: sendDeepSeekExtensions ? thinkingToOpenAi(body.thinking) : undefined,
     reasoning_effort: sendDeepSeekExtensions ? reasoningEffortToOpenAi(body.output_config) : undefined,
     stream_options: stream ? { include_usage: true } : undefined,
   };
-
   for (const key of Object.keys(payload)) {
     if (payload[key] === undefined || payload[key] === null) delete payload[key];
   }
@@ -1049,8 +1090,14 @@ function sse(res, event, data) {
   res.write(`data: ${JSON.stringify(data)}\n\n`);
 }
 
-function writeMessageStart(res, model) {
+function estimateInputTokens(anthropicBody) {
+  const text = JSON.stringify(anthropicBody);
+  return Math.max(1, Math.ceil(text.length / 3.5));
+}
+
+function writeMessageStart(res, model, inputTokens) {
   const id = `msg_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+  const usage = { input_tokens: inputTokens || 0, output_tokens: 0 };
   sse(res, "message_start", {
     type: "message_start",
     message: {
@@ -1061,13 +1108,11 @@ function writeMessageStart(res, model) {
       content: [],
       stop_reason: null,
       stop_sequence: null,
-      // Anthropic sends input_tokens in message_start, but OpenAI-compatible
-      // streaming usage only arrives near the end. We report output usage in
-      // message_delta and leave input_tokens at 0 to avoid buffering the stream.
-      usage: { input_tokens: 0, output_tokens: 0 },
+      usage,
     },
   });
 }
+
 
 function contentBlockStart(res, index, block) {
   sse(res, "content_block_start", {
@@ -1222,15 +1267,14 @@ async function probeUpstream(req) {
   }
 }
 
-async function streamOpenAiAsAnthropic(upstream, res, model, toolContextParts = [], upstreamContext = null) {
+async function streamOpenAiAsAnthropic(upstream, res, model, toolContextParts = [], upstreamContext = null, inputTokens = 0) {
   res.writeHead(200, {
     "content-type": "text/event-stream; charset=utf-8",
     "cache-control": "no-cache",
     connection: "keep-alive",
   });
 
-  writeMessageStart(res, model);
-
+  writeMessageStart(res, model, inputTokens);
   const decoder = new TextDecoder();
   let buffer = "";
   let thinkingBlockIndex = null;
@@ -1390,10 +1434,29 @@ async function streamOpenAiAsAnthropic(upstream, res, model, toolContextParts = 
   }
 }
 
+async function handleCountTokens(req, res) {
+  const body = await readJsonBody(req);
+  const payload = anthropicToOpenAi(body, false);
+  payload.max_tokens = 1;
+  delete payload.stream;
+  const upstreamContext = createUpstreamContext(res);
+  try {
+    const response = await callOpenCode(req, payload, upstreamContext);
+    const data = await response.json();
+    const promptTokens = (data.usage && data.usage.prompt_tokens) || estimateInputTokens(body);
+    sendJson(res, 200, { input_tokens: promptTokens });
+  } catch (error) {
+    throw normalizeUpstreamError(error, upstreamContext);
+  } finally {
+    upstreamContext.cleanup();
+  }
+}
+
 async function handleMessages(req, res) {
   const body = await readJsonBody(req);
   const wantsStream = body.stream === true;
   const toolContextParts = currentToolContextParts(body.messages);
+  const inputTokens = estimateInputTokens(body);
   const payload = anthropicToOpenAi(body, wantsStream);
   const upstreamContext = createUpstreamContext(res);
   let upstream;
@@ -1402,7 +1465,7 @@ async function handleMessages(req, res) {
     upstream = await callOpenCode(req, payload, upstreamContext);
 
     if (wantsStream) {
-      await streamOpenAiAsAnthropic(upstream, res, body.model, toolContextParts, upstreamContext);
+      await streamOpenAiAsAnthropic(upstream, res, body.model, toolContextParts, upstreamContext, inputTokens);
       return;
     }
 
@@ -1486,6 +1549,10 @@ function createServer() {
 
       if (req.method === "POST" && url.pathname === "/v1/messages") {
         await handleMessages(req, res);
+        return;
+      }
+      if (req.method === "POST" && url.pathname === "/v1/messages/count_tokens") {
+        await handleCountTokens(req, res);
         return;
       }
 
