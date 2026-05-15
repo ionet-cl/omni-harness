@@ -5,8 +5,8 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-WorkingDirectory=/home/leonardo/dev/repos/deepseek-v4-opencode-claude-code-bridge
-ExecStart=/home/leonardo/.nvm/versions/node/v24.14.1/bin/node /home/leonardo/dev/repos/deepseek-v4-opencode-claude-code-bridge/index.js --config /home/leonardo/dev/repos/deepseek-v4-opencode-claude-code-bridge/config.json
+WorkingDirectory=/home/leonardo/dev/repos/omni-harness
+ExecStart=/home/leonardo/.nvm/versions/node/v24.14.1/bin/node /home/leonardo/dev/repos/omni-harness/index.js --config /home/leonardo/dev/repos/omni-harness/config.json
 Restart=always
 RestartSec=5
 

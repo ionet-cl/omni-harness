@@ -13,14 +13,14 @@
 
 set -euo pipefail
 
-REPO_BRIDGE="https://github.com/ionet-cl/deepseek-v4-opencode-claude-code-bridge.git"
+REPO_BRIDGE="https://github.com/ionet-cl/omni-harness.git"
 REPO_OMNIPI="https://github.com/iodevs-net/omni-pi.git"
 REPO_IODESK="https://github.com/iodevs-net/iodesk-3.git"
 
-BRIDGE_DIR="$HOME/dev/repos/deepseek-v4-opencode-claude-code-bridge"
+REPO_DIR="$HOME/dev/repos/omni-harness"
 OMNIPI_DIR="$HOME/dev/proyectos/omni-pi"
 IODESK_DIR="$HOME/dev/proyectos/helpdesk-ionet/iodesk-3"
-HARNESS_DIR="$BRIDGE_DIR/harness-blackboard"
+BLACKBOARD_DIR="$REPO_DIR/harness-blackboard"
 BOOTSTRAP_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 echo "═══════════════════════════════════════════"
@@ -47,7 +47,7 @@ clone_or_pull() {
   fi
 }
 
-clone_or_pull "$BRIDGE_DIR" "$REPO_BRIDGE" "bridge fork"
+clone_or_pull "$REPO_DIR" "$REPO_BRIDGE" "omni-harness"
 clone_or_pull "$OMNIPI_DIR" "$REPO_OMNIPI" "omni-pi"
 clone_or_pull "$IODESK_DIR" "$REPO_IODESK" "ioDesk-3"
 
@@ -100,7 +100,7 @@ echo "[3/6] Configurando blackboard..."
 
 BLACKBOARD_LINK="$HOME/harness-blackboard"
 if [ ! -L "$BLACKBOARD_LINK" ] && [ ! -d "$BLACKBOARD_LINK" ]; then
-  ln -sf "$HARNESS_DIR" "$BLACKBOARD_LINK"
+  ln -sf "$BLACKBOARD_DIR" "$BLACKBOARD_LINK"
   echo "  ✅ Symlink creado: $BLACKBOARD_LINK → $HARNESS_DIR"
 elif [ -d "$BLACKBOARD_LINK" ] && [ ! -L "$BLACKBOARD_LINK" ]; then
   echo "  ⚠️  $BLACKBOARD_LINK ya existe (no symlink), se deja como está"
@@ -109,8 +109,8 @@ else
 fi
 
 # Instalar dependencias
-if [ -f "$HARNESS_DIR/package.json" ]; then
-  cd "$HARNESS_DIR" && npm install --silent 2>/dev/null
+if [ -f "$BLACKBOARD_DIR/package.json" ]; then
+  cd "$BLACKBOARD_DIR" && npm install --silent 2>/dev/null
   echo "  ✅ Dependencias del blackboard instaladas"
 fi
 

@@ -5,7 +5,7 @@ if [ -f "$PID_FILE" ] && kill -0 $(cat "$PID_FILE") 2>/dev/null; then
     exit 0
 fi
 
-cd /home/leonardo/dev/repos/deepseek-v4-opencode-claude-code-bridge
+cd /home/leonardo/dev/repos/omni-harness
 OPENCODE_GO_API_KEY="PLACEHOLDER_OPENCODE_API_KEY" \
 nohup node index.js --config ./config.json > /tmp/deepseek-bridge.log 2>&1 &
 echo $! > "$PID_FILE"

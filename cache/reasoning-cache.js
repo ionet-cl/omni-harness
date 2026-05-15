@@ -304,6 +304,9 @@ function currentToolContextParts(messages) {
         hadToolCall = false;
         parts = [];
       }
+      for (const result of toolResults) {
+        if (hadToolCall) parts.push(toolResultSignature(result));
+      }
       if (text) parts.push(`USER: ${text}`);
     } else if (msg && msg.role === "assistant") {
       if (text) parts.push(`ASSISTANT: ${text}`);

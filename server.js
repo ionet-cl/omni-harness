@@ -18,7 +18,7 @@ try {
   cacheModule.loadReasoningCache();
 
   // Reemplazar funciones inline por las modulares
-  loadReasoningCache = function () {};
+  loadReasoningCache = () => cacheModule.loadReasoningCache();
   saveReasoningCacheNow = cacheModule.saveReasoningCacheNow;
   flushReasoningCache = cacheModule.flushReasoningCache;
   scheduleSaveReasoningCache = cacheModule.scheduleSaveReasoningCache;
@@ -38,6 +38,52 @@ try {
   console.error(`[Bridge] Legacy mode: usando lógica inline.`);
 }
 
+// ── Protocol Adapter (modular) ────────────────────────────────────
+// Estas variables deben estar disponibles para el módulo de protocolo
+// (declaradas antes del try block para evitar TDZ)
+let warnedFinishReasons = new Set();
+const CHAT_COMPLETIONS_RESPONSE_HEADERS = ["content-type", "cache-control"];
+
+let useProtocolModule = false;
+try {
+  const protocolModule = require("./adapters/protocol.js");
+  protocolModule.init({
+    cache: {
+      getToolReasoning,
+      setToolReasoning,
+      getAssistantReasoning,
+      setAssistantReasoning,
+      getToolContextReasoning,
+      setToolContextReasoning,
+      currentToolContextParts,
+      toolUseSignature,
+      toolResultSignature,
+    },
+    config: CONFIG,
+    placeholderReasoning: PLACEHOLDER_REASONING,
+    warnedFinishReasons,
+    CHAT_COMPLETIONS_RESPONSE_HEADERS,
+  });
+
+  // Override protocol functions (except streamOpenAiAsAnthropic que mantiene lógica inline)
+  anthropicMessagesToOpenAi = protocolModule.anthropicMessagesToOpenAi;
+  anthropicToolsToOpenAi = protocolModule.anthropicToolsToOpenAi;
+  anthropicToolChoiceToOpenAi = protocolModule.anthropicToolChoiceToOpenAi;
+  anthropicToOpenAi = protocolModule.anthropicToOpenAi;
+  openAiToAnthropic = protocolModule.openAiToAnthropic;
+  openAiUsageToAnthropic = protocolModule.openAiUsageToAnthropic;
+  reasoningFromMessage = protocolModule.reasoningFromMessage;
+  mapFinishReason = protocolModule.mapFinishReason;
+  isDeepSeekModel = protocolModule.isDeepSeekModel;
+  sanitizeModelName = protocolModule.sanitizeModelName;
+  parseJsonObject = protocolModule.parseJsonObject;
+
+  useProtocolModule = true;
+  console.error(`[Bridge] Protocol module: adaptadores desde módulo.`);
+} catch (protocolError) {
+  console.error(`[Bridge] Protocol module fallback: ${protocolError.message}`);
+}
+
 const DEFAULT_BASE_URL = "https://opencode.ai/zen/go/v1";
 const DEFAULT_MODELS = ["deepseek-v4-pro[1m]", "deepseek-v4-flash"];
 const DEFAULT_REASONING_CACHE_PATH = path.join(
@@ -51,8 +97,6 @@ const DEFAULT_REASONING_CACHE_MAX_AGE_MS = 30 * DAY_MS;
 const DEFAULT_REASONING_CACHE_MAX_SIZE_BYTES = 200 * 1024 * 1024;
 const DEFAULT_REQUEST_BODY_LIMIT_BYTES = 100 * 1024 * 1024;
 const DEFAULT_UPSTREAM_TIMEOUT_MS = 10 * 60 * 1000;
-const CHAT_COMPLETIONS_RESPONSE_HEADERS = ["content-type", "cache-control"];
-const warnedFinishReasons = new Set();
 
 function readJson(file) {
   try {
@@ -211,8 +255,9 @@ if (typeof CONFIG === 'undefined') {
 const reasoningByToolCallId = new Map();
 const reasoningByAssistantText = new Map();
 const reasoningByToolContext = new Map();
-const PLACEHOLDER_REASONING =
-  "Compatibility bridge placeholder reasoning for prior assistant history.";
+if (typeof PLACEHOLDER_REASONING === 'undefined') {
+  var PLACEHOLDER_REASONING = "Compatibility bridge placeholder reasoning for prior assistant history.";
+}
 
 function sha256(text) {
   return crypto.createHash("sha256").update(text || "", "utf8").digest("hex");

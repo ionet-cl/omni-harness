@@ -69,7 +69,7 @@ test("anthropicToOpenAi converts messages, tools, and DeepSeek reasoning", () =>
     false,
   );
 
-  assert.equal(payload.model, "deepseek-v4-pro[1m]");
+  assert.equal(payload.model, "deepseek-v4-pro");
   assert.equal(payload.stream, false);
   assert.equal(payload.messages[0].role, "system");
   assert.match(payload.messages[0].content, /You are concise/);

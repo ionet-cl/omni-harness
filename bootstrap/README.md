@@ -6,7 +6,7 @@ Configuración portable del harness multi-agente.
 
 ```bash
 # 1. En la máquina nueva
-git clone https://github.com/ionet-cl/deepseek-v4-opencode-claude-code-bridge.git
+git clone https://github.com/ionet-cl/omni-harness.git
 cd deepseek-v4-opencode-claude-code-bridge/bootstrap
 
 # 2. Copiar y completar API keys
